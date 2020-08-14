@@ -19,32 +19,29 @@ load_source () {
 }
 
 curl_webex() {
-    curl -v \
+    curl \
          -H "Authorization: Bearer ${access_token}" \
          -H "Accept: application/json" \
          -H "Content-Type: application/json" \
-         ${@}
+         ${@} > /tmp/curl_webex_output
 }
 
 repipe
 load_source
-eval $( jq -r '{
+# cat/sec-shenanigans conducted here to retain line breaks for things like code
+# blocks
+eval $(cat /tmp/stdin | sed 's/\\n/\\\\n/g' | jq -r '{
     "params_message": (.params.message // ""),
     "params_markdown": ( .params.markdown // ""),
-} | to_entries[] | .key + "=" + @sh "\(.value)"' < /tmp/stdin)
+} | to_entries[] | .key + "=" + @sh "\(.value)"' -)
 
 
 if [ -z "${params_message}" ] && [ -z "${params_markdown}" ]; then
     echo '`message` and/or `markdown` must be provided as a parameter.'
     exit 1
 else
-    if [ -z "${params_message}" ]; then
-        params_message=${params_markdown}
-    fi
-    if [ -z "${params_markdown}" ]; then
-        params_markdown=${params_message}
-    fi
-    # POST Message to room
+    params_markdown="$(echo ${params_markdown} | sed 's/\\n/\n/g')"
+    params_message="$(echo ${params_message} | sed 's/\\n/\n/g')"
     jq -c -n \
       --arg roomId "${room_id}" \
       --arg markdown "${params_markdown}" \
