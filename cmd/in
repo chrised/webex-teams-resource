@@ -1,3 +1,39 @@
 #!/bin/sh
+set -e
 
-exit 0
+. $(dirname ${0})/common.sh
+
+repipe
+load_source
+
+# Bot users can't list messages in rooms, so we just get the room detail.
+curl_webex \
+  -X GET \
+  "${base_url}/rooms/${room_id}"
+
+jq -c \
+  '{
+      "version": {
+          "room": .id
+      },
+      "metadata": [
+        {
+          "name": "title",
+          "value": .title,
+        },
+        {
+          "name": "last_activity",
+          "value": .lastActivity,
+        },
+        {
+          "name": "created_at",
+          "value": .created,
+        },
+        {
+          "name": "creatorId",
+          "value": .creatorId,
+        }
+      ]
+  }' \
+  < /tmp/curl_webex_output \
+  >&3
