@@ -1,0 +1,55 @@
+#!/bin/sh
+
+repipe () {
+  exec 3>&1
+  exec 1>&2
+  cat > /tmp/stdin
+}
+
+load_source () {
+    eval $(
+        jq -r '
+        {
+            "base_url": (.source.base_url // "https://webexapis.com/v1/"),
+            "access_token": .source.access_token,
+            "room_id": .source.room_id,
+        } | to_entries[] | .key + "=" + @sh "\(.value)"' < /tmp/stdin
+    )
+}
+
+curl_webex() {
+    curl -v \
+         -H "Authorization: Bearer ${access_token}" \
+         -H "Accept: application/json" \
+         ${@}
+}
+
+repipe
+load_source
+eval $( jq -r '{
+    "params_message": (.params.message // ""),
+    "params_markdown": ( .params.markdown // ""),
+} | to_entries[] | .key + "=" + @sh "\(.value)"' < /tmp/stdin)
+
+
+if [ -z "${params_message}" ] && [ -z "${params_markdown}" ]; then
+    echo '`message` and/or `markdown` must be provided as a parameter.'
+    exit 1
+else
+    if [ -z "${params_message}" ]; then
+        params_message=${params_markdown}
+    fi
+    if [ -z "${params_markdown}" ]; then
+        params_markdown=${params_message}
+    fi
+    # POST Message to room
+    curl_webex \
+        -X POST \
+        -H "Content-Type: application/json" \
+        --data "{
+            \"roomId\": \"${room_id}\",
+            \"markdown\": \"${params_markdown}\",
+            \"text\": \"${params_message}\"
+        }" \
+        ${base_url}/messages
+fi
