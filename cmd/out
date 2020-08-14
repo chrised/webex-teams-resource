@@ -55,3 +55,23 @@ else
         -d@- \
         "${base_url}/messages"
 fi
+
+
+jq -c \
+  '{
+      "version": {
+          "commit": .id
+      },
+      "metadata": [
+        {
+          "name": "created_at",
+          "value": .created,
+        },
+        {
+          "name": "created_by",
+          "value": .personEmail,
+        }
+      ]
+  }' \
+  < /tmp/curl_webex_output \
+  >&3
