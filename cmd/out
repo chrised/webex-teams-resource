@@ -21,6 +21,7 @@ curl_webex() {
     curl -v \
          -H "Authorization: Bearer ${access_token}" \
          -H "Accept: application/json" \
+         -H "Content-Type: application/json" \
          ${@}
 }
 
@@ -43,13 +44,16 @@ else
         params_markdown=${params_message}
     fi
     # POST Message to room
-    curl_webex \
-        -X POST \
-        -H "Content-Type: application/json" \
-        --data "{
-            \"roomId\": \"${room_id}\",
-            \"markdown\": \"${params_markdown}\",
-            \"text\": \"${params_message}\"
-        }" \
-        ${base_url}/messages
+    jq -c -n \
+      --arg roomId "${room_id}" \
+      --arg markdown "${params_markdown}" \
+      --arg text "${params_message}" \
+      '{
+          "roomId": $roomId,
+          "markdown": $markdown,
+          "text": $text,
+      } | to_entries | map( select( 0 < ( .value | length ) ) ) | from_entries' \
+      | curl_webex \
+        -d@- \
+        "${base_url}/messages"
 fi
