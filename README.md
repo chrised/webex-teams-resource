@@ -5,19 +5,31 @@ A resource for sending messages to WebEx Teams from Concourse.
 ## Usage
 
 ```yaml
-resources:
-  my_wxt_room:
-    resource_type: webex-teams
+resource_types:
+  - name: webex-teams
+    type: registry-image
     source:
-        room_id: my_room_id
-        access_token: my_bot_token
+      repository: chrised/webex-teams-resource
+      tag: latest
+    check_every: 4h
+
+resources:
+  - name: wxt_room
+    type: webex-teams
+    source:
+      room_id: ((my_room_id))
+      access_token: ((my access_token))
+
 jobs:
-  - name: Thing
+  - name: Send message
     plan:
-      - put: my_wxt_room
+      - put: wxt_room
         params:
           markdown: |
-            Hello, I am Concourse
-            Vardata: `(( useful_pipeline_variable ))`
-
+            Resource message<br />
+            [with hyperlink](https://github.com)
+            ```
+            code block also
+            wow
+            ```
 ```
